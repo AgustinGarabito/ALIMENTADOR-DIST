@@ -31,6 +31,9 @@ int melodia = 0; // MELODIA DEFAULT
 // DISPLAY LCD
 LiquidCrystal_I2C lcd(0x27,16,2);
 
+// MOTOR VIBRACION
+const int PIN_VIBRACION = 14;
+
 // FUNCIONES
 void melodiaBuzzer(int melodia);
 void inicializarDisplay();
@@ -40,6 +43,8 @@ void dispensadorAutomatico();
 void melodia1();
 void melodia2();
 void melodia3();
+void sacudirServo();
+void motorVibracion(int duracion);
 
 // FUNCION PARA ALIMENTAR MEDIANTE EL PIN VIRTUAL V1
 BLYNK_WRITE(V1) {
@@ -84,7 +89,7 @@ void setup() {
   
   // SERVO
   myservo.attach(15);
-  myservo.write(0); 
+  myservo.write(20); 
 
   // SERIAL
   Serial.begin(115200);
@@ -95,6 +100,9 @@ void setup() {
   lcd.clear();
   lcd.setCursor(2, 0);
   lcd.print("Iniciando...");
+
+  // MOTOR VIBRACION
+  pinMode(PIN_VIBRACION, OUTPUT);
 
   // CONEXIONES
   iniciarConexiones();
@@ -567,6 +575,7 @@ void inicializarDisplay(){
   lcd.setCursor(1, 0);
   lcd.print("Hora de inicio: ");
   lcd.setCursor(4, 1);
+  timeClient.update();
   lcd.print(timeClient.getFormattedTime());
 }
 
@@ -574,9 +583,7 @@ void dispensar(){
   // LLAMA MEDIANTE MELODIA
   melodiaBuzzer(melodia);
 
-  myservo.write(180); // ABRE COMPUERTA
-  delay(SEGUNDOS_DISPENSADOS); // DELAY 3 SEG (PORCION)
-  myservo.write(0);   // CIERRA COMPUERTA
+  sacudirServo();
 
   // OBETENER DIA
   timeClient.update();
@@ -615,4 +622,44 @@ void dispensadorAutomatico(){
   if ((timeClient.getFormattedTime() == "10:00:00" || timeClient.getFormattedTime() == "20:00:00" ) && vecesAlimentadoHoy < 2){
     dispensar();
   }
+}
+
+// SACUDIR SERVO
+void sacudirServo() {
+  // MOVIMIENTOS VAIVEN
+  delay(1000);
+   for (int i=0;i<5;i++){
+    myservo.write(76);
+    delay(100);
+    myservo.write(20);
+    delay(100);
+  }
+
+  // VIBRACION
+  motorVibracion(3000);
+  delay(3200);
+
+  myservo.write(180); // ABRE COMPUERTA
+  delay(SEGUNDOS_DISPENSADOS); // DELAY 0,400 SEG (PORCION)
+  myservo.write(20);   // CIERRA COMPUERTA
+  delay(200);
+
+  // VIBRACION
+  motorVibracion(3000);
+  delay(3200);
+
+  //MOVIMIENTOS VAIVEN
+  for (int i=0;i<5;i++){
+   myservo.write(76);
+   delay(100);
+   myservo.write(20);
+   delay(100);
+  }
+}
+
+// MOTOR VIBRACION
+void motorVibracion(int duracion){
+  digitalWrite(PIN_VIBRACION, HIGH);
+  delay(duracion);
+  digitalWrite(PIN_VIBRACION, LOW);
 }
