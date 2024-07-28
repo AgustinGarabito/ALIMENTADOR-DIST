@@ -13,6 +13,9 @@ byte max_intentos = 50;
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 
+// VARIABLES BLYNK
+BlynkTimer timer;
+
 // CONFIGURAR SERVIDOR NTP PARA OBTENER HORA EN TIEMPO REAL
 WiFiUDP udp;
 NTPClient timeClient(udp, NTPSERVER, GMT_3, INTERVALO);
@@ -23,6 +26,7 @@ const int ledPin = 2;
 // SERVO
 Servo myservo;
 int vecesAlimentadoHoy = 0;
+String fechaHora = " ";
 
 // BUZZER
 const int PIN_BUZZ = 13;
@@ -30,6 +34,7 @@ int melodia = 0; // MELODIA DEFAULT
 
 // DISPLAY LCD
 LiquidCrystal_I2C lcd(0x27,16,2);
+String horaInicio;
 
 // MOTOR VIBRACION
 const int PIN_VIBRACION = 14;
@@ -46,6 +51,7 @@ void melodia3();
 void sacudirServo();
 void motorVibracion(int duracion);
 bool verificarConexionBlynk();
+void timerBlynk();
 
 // FUNCION PARA ALIMENTAR MEDIANTE EL PIN VIRTUAL V1
 BLYNK_WRITE(V1) {
@@ -65,6 +71,12 @@ BLYNK_WRITE(V2) {
 
 // RESPALDO VECES ALIMENTADO EN CASO DE CORTE DE ENERGIA
 BLYNK_WRITE(V3) {
+  // LEE EL PARAMETRO
+  vecesAlimentadoHoy = param.asInt();
+}
+
+// RESPALDO VECES ALIMENTADO EN CASO DE CORTE DE ENERGIA
+BLYNK_WRITE(V4) {
   // LEE EL PARAMETRO
   vecesAlimentadoHoy = param.asInt();
 }
@@ -105,6 +117,9 @@ void setup() {
   // MOTOR VIBRACION
   pinMode(PIN_VIBRACION, OUTPUT);
 
+  // BLYNK TIMER
+  timer.setInterval(60000, timerBlynk);
+
   // CONEXIONES
   iniciarConexiones();
 }
@@ -130,7 +145,7 @@ void loop() {
     Blynk.begin(BLYNK_AUTH_TOKEN, WIFI_SSID, WIFI_PASSWORD);
     delay(1000);
 
-    // PRENDER A BLYNK
+    // PRENDER BLYNK
     Blynk.run();
     delay(5000);
 
@@ -141,6 +156,13 @@ void loop() {
     if(timeClient.getFormattedTime() > "20:00:00" && timeClient.getFormattedTime() <= "23:00:00" && vecesAlimentadoHoy == 1){
       dispensar();
     }
+
+    // VERIFICAR SI NO SE PERDIO EL REINICIO
+    if(timeClient.getFormattedTime() > "00:00:00" && timeClient.getFormattedTime() <= "05:00:00" && vecesAlimentadoHoy > 0){
+      vecesAlimentadoHoy = 0;
+      Blynk.virtualWrite(V3,vecesAlimentadoHoy);
+      Blynk.virtualWrite(V5,vecesAlimentadoHoy);
+    }
   }
 
   // PRENDER LED INTEGRADO
@@ -148,6 +170,9 @@ void loop() {
 
   // PRENDER A BLYNK
   Blynk.run();
+
+  // PRENDER TIMER
+  timer.run();
 
   // ACTUALIZAR HORA
   timeClient.update();
@@ -218,6 +243,13 @@ void iniciarConexiones(){
     if(timeClient.getFormattedTime() > "20:00:00" && timeClient.getFormattedTime() <= "23:00:00" && vecesAlimentadoHoy == 1){
       dispensar();
     }
+
+    // VERIFICAR SI NO SE PERDIO EL REINICIO
+    if(timeClient.getFormattedTime() > "00:00:00" && timeClient.getFormattedTime() <= "05:00:00" && vecesAlimentadoHoy > 0){
+      vecesAlimentadoHoy = 0;
+      Blynk.virtualWrite(V3,vecesAlimentadoHoy);
+      Blynk.virtualWrite(V5,vecesAlimentadoHoy);
+    }
   }
   else { // SI NO SE CONECTA MUESTRA UN ERROR
     Serial.println("------------------------------------");
@@ -240,6 +272,18 @@ void iniciarConexiones(){
 // VERIFICAR CONEXION BLYNK
 bool verificarConexionBlynk() {
   return Blynk.connected();
+}
+
+// TIMER BLYNK
+void timerBlynk() {
+  timeClient.update();
+  String horaActual = " | Hora Act. " + timeClient.getFormattedTime();
+  String horaDeInicio = "Hora inicio "+ horaInicio;
+  if(fechaHora == " "){
+    Blynk.virtualWrite(V4, horaDeInicio + horaActual);
+  } else {
+    Blynk.virtualWrite(V4, fechaHora + horaActual);
+  }
 }
 
 // SELECTOR DE MELODIAS
@@ -601,7 +645,8 @@ void inicializarDisplay(){
   lcd.print("Hora de inicio: ");
   lcd.setCursor(4, 1);
   timeClient.update();
-  lcd.print(timeClient.getFormattedTime());
+  horaInicio = timeClient.getFormattedTime();
+  lcd.print(horaInicio);
 }
 
 void dispensar(){
@@ -631,10 +676,8 @@ void dispensar(){
   lcd.setCursor(8, 1);
   lcd.print(timeClient.getFormattedTime());
 
-  // GUARDA LA DIA/HORA Y LA ENVIA A LA APP
-  String fechaHora = diaSemanaStr + " " + timeClient.getFormattedTime();
-
-  Blynk.virtualWrite(V4,fechaHora);
+  // GUARDA DIA/HORA Y LA ENVIA A LA APP
+  fechaHora = diaSemanaStr + " " + timeClient.getFormattedTime();
 
   // AUMENTA vecesAlimentadoHoy Y LO ACTUALIZA EN LA APP (SLIDE Y VALUE)
   vecesAlimentadoHoy++;
