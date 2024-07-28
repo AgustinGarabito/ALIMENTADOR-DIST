@@ -45,6 +45,7 @@ void melodia2();
 void melodia3();
 void sacudirServo();
 void motorVibracion(int duracion);
+bool verificarConexionBlynk();
 
 // FUNCION PARA ALIMENTAR MEDIANTE EL PIN VIRTUAL V1
 BLYNK_WRITE(V1) {
@@ -109,7 +110,7 @@ void setup() {
 }
 
 void loop() {
-  // MANEJAR RECONEXION
+  // MANEJAR RECONEXION WIFI
   if (WiFi.status() != WL_CONNECTED) {
     // MUESTRA POR PANTALLA
     lcd.clear();
@@ -121,6 +122,25 @@ void loop() {
 
     // INTENTA RECONECTAR
     iniciarConexiones();
+  }
+
+  // MANEJAR RECONEXION BLYNK
+  if (!verificarConexionBlynk()) {
+    Serial.println("Reconectando a Blynk...");
+    Blynk.begin(BLYNK_AUTH_TOKEN, WIFI_SSID, WIFI_PASSWORD);
+    delay(1000);
+
+    // PRENDER A BLYNK
+    Blynk.run();
+    delay(5000);
+
+    // VERIFICAR SI NO SE PERDIO UNA COMIDA
+    if(timeClient.getFormattedTime() > "10:00:00" && timeClient.getFormattedTime() <= "14:00:00" && vecesAlimentadoHoy == 0){
+      dispensar();
+    }
+    if(timeClient.getFormattedTime() > "20:00:00" && timeClient.getFormattedTime() <= "23:00:00" && vecesAlimentadoHoy == 1){
+      dispensar();
+    }
   }
 
   // PRENDER LED INTEGRADO
@@ -215,6 +235,11 @@ void iniciarConexiones(){
     delay(30000);
     ESP.restart();
   }
+}
+
+// VERIFICAR CONEXION BLYNK
+bool verificarConexionBlynk() {
+  return Blynk.connected();
 }
 
 // SELECTOR DE MELODIAS
