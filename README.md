@@ -104,3 +104,24 @@ NOTA: Se descarto el uso de la memoria EEPROM ya que en el ESP8266 la misma tien
 <hr>
 
 ## CAPTURAS DEL PROGRESO Y RESULTADO
+<div style="display: flex; justify-content: space-between;">
+
+  <img src="https://github.com/user-attachments/assets/1be5fe19-cdcd-4169-af42-1f528d92ed7e" width="45%" style="margin: 0 10px;">
+  <img src="https://github.com/user-attachments/assets/24122a83-de0a-4138-b110-d2b91d7c5972" width="45%" style="margin: 0 10px;">
+
+</div>
+
+<div style="display: flex; justify-content: space-between;">
+
+  <img src="https://github.com/user-attachments/assets/7388f4cc-4b63-4b03-a380-022d5487719e" width="45%" style="margin: 0 10px;">
+  <img src="https://github.com/user-attachments/assets/176f686f-c6bb-405f-8f34-25724fda49da" width="45%" style="margin: 0 10px;">
+
+</div>
+
+<div style="display: flex; justify-content: space-between;">
+
+  <img src="https://github.com/user-attachments/assets/3af86305-1dda-4f41-8611-5631f959172a" width="45%" style="margin: 0 10px;">
+  <img src="https://github.com/user-attachments/assets/dc40631e-4fa4-44fa-b272-c84d2ad227f3" width="45%" style="margin: 0 10px;">
+
+</div>
+
