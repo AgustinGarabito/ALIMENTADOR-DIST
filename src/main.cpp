@@ -13,9 +13,6 @@ byte max_intentos = 50;
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 
-// VARIABLES BLYNK
-BlynkTimer timer;
-
 // CONFIGURAR SERVIDOR NTP PARA OBTENER HORA EN TIEMPO REAL
 WiFiUDP udp;
 NTPClient timeClient(udp, NTPSERVER, GMT_3, INTERVALO);
@@ -25,8 +22,8 @@ const int ledPin = 2;
 
 // SERVO
 Servo myservo;
-int vecesAlimentadoHoy = 0;
-String fechaHora = " ";
+int vecesAlimentadoHoy;
+String fechaHora;
 
 // BUZZER
 const int PIN_BUZZ = 13;
@@ -50,8 +47,6 @@ void melodia2();
 void melodia3();
 void sacudirServo();
 void motorVibracion(int duracion);
-bool verificarConexionBlynk();
-void timerBlynk();
 
 // FUNCION PARA ALIMENTAR MEDIANTE EL PIN VIRTUAL V1
 BLYNK_WRITE(V1) {
@@ -75,6 +70,12 @@ BLYNK_WRITE(V3) {
   vecesAlimentadoHoy = param.asInt();
 }
 
+// RESPALDO ULTIMA COMIDA
+BLYNK_WRITE(V4) {
+  // LEE EL PARAMETRO
+  fechaHora = param.asString();
+}
+
 // AUMENTO / DECREMENTO DE ALIMENTO MANUAL
 BLYNK_WRITE(V5) {
   // LEE EL PARAMETRO Y LO ACTUALIZA (LA VARIABLE Y EN LA APP)
@@ -87,6 +88,7 @@ BLYNK_CONNECTED(){
   Blynk.syncVirtual(V3);
   Blynk.syncVirtual(V2);
   Blynk.syncVirtual(V5);
+  Blynk.syncVirtual(V4);
 }
 
 void setup() {
@@ -111,9 +113,6 @@ void setup() {
   // MOTOR VIBRACION
   pinMode(PIN_VIBRACION, OUTPUT);
 
-  // BLYNK TIMER
-  timer.setInterval(60000, timerBlynk);
-
   // CONEXIONES
   iniciarConexiones();
 }
@@ -133,52 +132,26 @@ void loop() {
     iniciarConexiones();
   }
 
-  // MANEJAR RECONEXION BLYNK
-  if (!verificarConexionBlynk()) {
-    Serial.println("Reconectando a Blynk...");
-    Blynk.begin(BLYNK_AUTH_TOKEN, WIFI_SSID, WIFI_PASSWORD);
-    delay(1000);
+  // SI HAY CONEXION QUE TRABAJE
+  if(WiFi.status() == WL_CONNECTED){
+    // PRENDER LED INTEGRADO
+    digitalWrite(ledPin, LOW);
 
-    // PRENDER BLYNK
+    // PRENDER A BLYNK
     Blynk.run();
-    delay(5000);
 
-    // VERIFICAR SI NO SE PERDIO UNA COMIDA
-    if(timeClient.getFormattedTime() > "10:00:00" && timeClient.getFormattedTime() <= "14:00:00" && vecesAlimentadoHoy == 0){
-      dispensar();
-    }
-    if(timeClient.getFormattedTime() > "20:00:00" && timeClient.getFormattedTime() <= "23:00:00" && vecesAlimentadoHoy == 1){
-      dispensar();
-    }
+    // ACTUALIZAR HORA
+    timeClient.update();
 
-    // VERIFICAR SI NO SE PERDIO EL REINICIO
-    if(timeClient.getFormattedTime() > "00:00:00" && timeClient.getFormattedTime() <= "05:00:00" && vecesAlimentadoHoy > 0){
+    // DISPENSA AUTOMATICAMENTE A LAS 10AM Y A LAS 20PM
+    dispensadorAutomatico();
+
+    // REINICIA EL CONTADOR AL CAMBIAR DE DIA Y ACTUALIZARLO EN LA APP
+    if(timeClient.getFormattedTime() == "00:00:00"){
       vecesAlimentadoHoy = 0;
       Blynk.virtualWrite(V3,vecesAlimentadoHoy);
       Blynk.virtualWrite(V5,vecesAlimentadoHoy);
     }
-  }
-
-  // PRENDER LED INTEGRADO
-  digitalWrite(ledPin, LOW);
-
-  // PRENDER A BLYNK
-  Blynk.run();
-
-  // PRENDER TIMER
-  timer.run();
-
-  // ACTUALIZAR HORA
-  timeClient.update();
-
-  // DISPENSA AUTOMATICAMENTE A LAS 10AM Y A LAS 20PM
-  dispensadorAutomatico();
-
-  // REINICIA EL CONTADOR AL CAMBIAR DE DIA Y ACTUALIZARLO EN LA APP
-  if(timeClient.getFormattedTime() == "00:00:00"){
-    vecesAlimentadoHoy = 0;
-    Blynk.virtualWrite(V3,vecesAlimentadoHoy);
-    Blynk.virtualWrite(V5,vecesAlimentadoHoy);
   }
 }
 
@@ -213,16 +186,10 @@ void iniciarConexiones(){
     lcd.print("exitosa!");
     cont = 0;
 
-    // SI SE REALIZO LA CONEXION QUE HAGA ESTO
-    if (WiFi.status() == WL_CONNECTED) {
-      // HORA ACTUAL
-      timeClient.begin();
-      timeClient.update();
-
-      // INICIALIZAR DISPLAY
-      inicializarDisplay();
-    }
-
+    // HORA ACTUAL
+    timeClient.begin();
+    timeClient.update();
+    
     // INICIA BLYNK
     Blynk.begin(BLYNK_AUTH_TOKEN, WIFI_SSID, WIFI_PASSWORD);
     delay(1000);
@@ -230,6 +197,9 @@ void iniciarConexiones(){
     // PRENDER A BLYNK
     Blynk.run();
     delay(5000);
+
+    // INICIALIZAR DISPLAY
+    inicializarDisplay();
 
     // VERIFICAR SI NO SE PERDIO UNA COMIDA
     if(timeClient.getFormattedTime() > "10:00:00" && timeClient.getFormattedTime() <= "14:00:00" && vecesAlimentadoHoy == 0){
@@ -261,23 +231,6 @@ void iniciarConexiones(){
     // ESPERA 30 SEG ANTES DE VOLVER A INTENTAR
     delay(30000);
     ESP.restart();
-  }
-}
-
-// VERIFICAR CONEXION BLYNK
-bool verificarConexionBlynk() {
-  return Blynk.connected();
-}
-
-// TIMER BLYNK
-void timerBlynk() {
-  timeClient.update();
-  String horaActual = " | Hora Act. " + timeClient.getFormattedTime();
-  String horaDeInicio = "Hora inicio "+ horaInicio;
-  if(fechaHora == " "){
-    Blynk.virtualWrite(V4, horaDeInicio + horaActual);
-  } else {
-    Blynk.virtualWrite(V4, fechaHora + horaActual);
   }
 }
 
@@ -637,11 +590,9 @@ void melodia3(){
 void inicializarDisplay(){
   lcd.clear();
   lcd.setCursor(1, 0);
-  lcd.print("Hora de inicio: ");
-  lcd.setCursor(4, 1);
-  timeClient.update();
-  horaInicio = timeClient.getFormattedTime();
-  lcd.print(horaInicio);
+  lcd.print("Ultima comida: ");
+  lcd.setCursor(0, 1);
+  lcd.print(fechaHora);
 }
 
 void dispensar(){
@@ -673,6 +624,8 @@ void dispensar(){
 
   // GUARDA DIA/HORA Y LA ENVIA A LA APP
   fechaHora = diaSemanaStr + " " + timeClient.getFormattedTime();
+
+  Blynk.virtualWrite(V4, fechaHora);
 
   // AUMENTA vecesAlimentadoHoy Y LO ACTUALIZA EN LA APP (SLIDE Y VALUE)
   vecesAlimentadoHoy++;
