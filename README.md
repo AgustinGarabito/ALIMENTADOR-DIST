@@ -103,11 +103,6 @@ NOTA: Se descarto el uso de la memoria EEPROM ya que en el ESP8266 la misma tien
 ### AMBAS
 -	<b> El sistema ante un corte de energía, permite aumentar el número de veces alimentado para así poder darle manualmente sin preocuparse. (Este número se sincroniza al momento que vuelve la energía/conexión)
 
-### DESCONEXION DE BLYNK
--	<b> El sistema esta capacitado para manejar una reconexión a Blynk ante cualquier percance con la plataforma.
--	<b> El sistema está capacitado para validar al momento de iniciar la conexión si entre las 10:00 AM y las 14:00 PM no fue dispensado automáticamente, dispensa en ese momento. 
-      (Lo mismo en el horario nocturno, realizado para prevenir problemas con la dispensación automática y lo cortes)
-
 
 <br>
 <hr>
