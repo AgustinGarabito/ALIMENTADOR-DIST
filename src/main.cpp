@@ -186,7 +186,8 @@ void loop() {
 void iniciarConexiones(){
   // CONEXION WIFI
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  while (WiFi.status() != WL_CONNECTED and cont < max_intentos) { // ESPERA CONEXION CON UN MAXIMO DE INTENTOS
+  cont = 0;
+  while (WiFi.status() != WL_CONNECTED && cont < max_intentos) { // ESPERA CONEXION CON UN MAXIMO DE INTENTOS
     cont++;
     delay(500);
     Serial.print(".");
@@ -677,6 +678,7 @@ void dispensar(){
   vecesAlimentadoHoy++;
   Blynk.virtualWrite(V3,vecesAlimentadoHoy);
   Blynk.virtualWrite(V5,vecesAlimentadoHoy);
+  Blynk.logEvent("alimentado", fechaHora);
 }
 
 // DISPENSADOR AUTOMATICO (10 AM Y 20 PM)
