@@ -2,6 +2,7 @@
 #include <LiquidCrystal_I2C.h>
 #include <Servo.h>
 #include "config.h"
+#include <EEPROM.h>
 
 // VARIABLES WIFI
 byte cont = 0;
@@ -36,6 +37,41 @@ String horaInicio;
 // MOTOR VIBRACION
 const int PIN_VIBRACION = 14;
 
+// BOTONES
+const int botonUp = 3;
+const int botonDown = 0;
+const int botonConfirm = 2;
+const int botonBack = 1;
+
+// VARIABLES MENU
+int opcionSeleccionada = 0;
+const int totalOpciones = 2;
+
+enum Estado {
+  MENU_PRINCIPAL,
+  MENU_CRONOGRAMA,
+  MENU_COMIDA,
+  SELECCIONAR_DIGITO,
+  AJUSTAR_HORA
+};
+
+// ESTADO ACTUAL Y TECLA
+Estado estadoActual = MENU_PRINCIPAL;
+
+// VARIABLES CRONOGRAMA
+String horaDia = "10:00:00";
+String horaNoche = "20:00:00";
+String horaS;
+int digitoSeleccionado = 0;
+int horario = 0;
+int digito;
+
+// VARIABLES EEPROM
+const int EEPROM_SIZE = 512;
+const int MAX_STRING_LENGTH = 20;
+const int EEPROM_HORA_DIA_ADDR = 0;
+const int EEPROM_HORA_NOCHE_ADDR = EEPROM_HORA_DIA_ADDR + MAX_STRING_LENGTH;
+
 // FUNCIONES
 void melodiaBuzzer(int melodia);
 void inicializarDisplay();
@@ -47,6 +83,16 @@ void melodia2();
 void melodia3();
 void sacudirServo();
 void motorVibracion(int duracion);
+void botonArriba();
+void botonAbajo();
+void botonConfirmar();
+void botonAtras();
+void mostrarMenuPrincipal();
+void mostrarMenuComida();
+void mostrarMenuCronograma();
+void mostrarSeleccionarDigito();
+void escribirEEPROM(int address, String data);
+String leerEEPROM(int address);
 
 // FUNCION PARA ALIMENTAR MEDIANTE EL PIN VIRTUAL V1
 BLYNK_WRITE(V1) {
@@ -96,6 +142,11 @@ void setup() {
   pinMode(PIN_BUZZ, OUTPUT);
   pinMode(ledPin, OUTPUT);
   
+  // EEPROM (SOLO HACER UNA VEZ, DESPUES COMENTAR)
+  EEPROM.begin(EEPROM_SIZE);
+  //writeStringToEEPROM(EEPROM_HORA_DIA_ADDR, horaDia);
+  //writeStringToEEPROM(EEPROM_HORA_NOCHE_ADDR, horaNoche);
+
   // SERVO
   myservo.attach(15);
   myservo.write(20); 
@@ -112,6 +163,12 @@ void setup() {
 
   // MOTOR VIBRACION
   pinMode(PIN_VIBRACION, OUTPUT);
+
+  // BOTONES
+  pinMode(botonUp, INPUT);
+  pinMode(botonDown, INPUT);
+  pinMode(botonConfirm, INPUT);
+  pinMode(botonBack, INPUT);
 
   // CONEXIONES
   iniciarConexiones();
@@ -134,6 +191,12 @@ void loop() {
 
   // SI HAY CONEXION QUE TRABAJE
   if(WiFi.status() == WL_CONNECTED){
+    // MANEJO DE BOTONES / MENU
+    botonArriba();
+    botonAbajo();
+    botonConfirmar();
+    botonAtras();
+
     // PRENDER LED INTEGRADO
     digitalWrite(ledPin, LOW);
 
@@ -199,13 +262,14 @@ void iniciarConexiones(){
     delay(5000);
 
     // INICIALIZAR DISPLAY
-    inicializarDisplay();
+    mostrarMenuPrincipal();
+    //inicializarDisplay();
 
     // VERIFICAR SI NO SE PERDIO UNA COMIDA
-    if(timeClient.getFormattedTime() > "10:00:00" && timeClient.getFormattedTime() <= "14:00:00" && vecesAlimentadoHoy == 0){
+    if(timeClient.getFormattedTime() > leerEEPROM(EEPROM_HORA_DIA_ADDR) && timeClient.getFormattedTime() <= "14:00:00" && vecesAlimentadoHoy == 0){
       dispensar();
     }
-    if(timeClient.getFormattedTime() > "20:00:00" && timeClient.getFormattedTime() <= "23:00:00" && vecesAlimentadoHoy == 1){
+    if(timeClient.getFormattedTime() > leerEEPROM(EEPROM_HORA_NOCHE_ADDR) && timeClient.getFormattedTime() <= "23:00:00" && vecesAlimentadoHoy == 1){
       dispensar();
     }
 
@@ -636,7 +700,7 @@ void dispensar(){
 
 // DISPENSADOR AUTOMATICO (10 AM Y 20 PM)
 void dispensadorAutomatico(){
-  if ((timeClient.getFormattedTime() == "10:00:00" || timeClient.getFormattedTime() == "20:00:00" ) && vecesAlimentadoHoy < 2){
+  if ((timeClient.getFormattedTime() == leerEEPROM(EEPROM_HORA_DIA_ADDR) || timeClient.getFormattedTime() == leerEEPROM(EEPROM_HORA_NOCHE_ADDR)) && vecesAlimentadoHoy < 2){
     dispensar();
   }
 }
@@ -679,4 +743,312 @@ void motorVibracion(int duracion){
   digitalWrite(PIN_VIBRACION, HIGH);
   delay(duracion);
   digitalWrite(PIN_VIBRACION, LOW);
+}
+
+// MOSTRAR MENU PRINCIPAL
+void mostrarMenuPrincipal() {
+  lcd.clear();
+  switch (opcionSeleccionada) {
+    case 0:
+      lcd.setCursor(0, 0);
+      lcd.print("> Cronograma");
+      lcd.setCursor(0, 1);
+      lcd.print("  Ult. Comida");
+      break;
+    case 1:
+      lcd.setCursor(0, 0);
+      lcd.print("  Cronograma");
+      lcd.setCursor(0, 1);
+      lcd.print("> Ult. Comida");
+      break;
+  }
+}
+
+
+// MOSTRAR MENU CRONOGRAMA
+void mostrarMenuCronograma(){
+  lcd.clear();
+  switch (opcionSeleccionada) {
+    case 0:
+      lcd.setCursor(0, 0);
+      lcd.print("> Dia");
+      lcd.setCursor(0, 1);
+      lcd.print("  Noche");
+      break;
+    case 1:
+      lcd.setCursor(0, 0);
+      lcd.print("  Dia");
+      lcd.setCursor(0, 1);
+      lcd.print("> Noche");
+      break;
+  }
+}
+
+// MOSTRAR MENU SELECCIONAR DIGITO
+void mostrarSeleccionarDigito(String horaS){
+  lcd.clear();
+  String horaActual;
+
+  lcd.setCursor(0, 0);
+	horaActual = horaS.substring(0,5);
+  lcd.print(horaActual);
+  if(digitoSeleccionado > 1){
+   	lcd.setCursor(digitoSeleccionado + 1, 1);
+  } else {
+   	lcd.setCursor(digitoSeleccionado, 1);
+  }
+  lcd.print("^");
+}
+
+// MOSTRAR MENU COMIDA
+void mostrarMenuComida(){
+  lcd.clear();
+  lcd.setCursor(1, 0);
+  lcd.print("Ultima comida: ");
+  lcd.setCursor(0, 1);
+  lcd.print(fechaHora);
+}
+
+// BOTON ARRIBA
+void botonArriba(){
+  // BOTON UP
+  if (digitalRead(botonUp) == LOW) {
+    delay(200);
+	switch(estadoActual){
+    case MENU_PRINCIPAL:
+	   	if (opcionSeleccionada > 0) {
+       	opcionSeleccionada--;
+    	}
+    	mostrarMenuPrincipal();
+	  break;
+    case MENU_CRONOGRAMA:
+      if (opcionSeleccionada > 0) {
+        opcionSeleccionada--;
+      }
+      mostrarMenuCronograma();
+    break;
+    case SELECCIONAR_DIGITO:
+      if (digitoSeleccionado > 0) { 
+        digitoSeleccionado--;
+      }
+      if(horario == 0){
+        String readHoraDia = leerEEPROM(EEPROM_HORA_DIA_ADDR);
+        mostrarSeleccionarDigito(readHoraDia);
+        //mostrarSeleccionarDigito(horaDia);
+      } else {
+        String readHoraNoche = leerEEPROM(EEPROM_HORA_NOCHE_ADDR);
+        mostrarSeleccionarDigito(readHoraNoche);
+        //mostrarSeleccionarDigito(horaNoche);
+      }
+        
+    break;
+    case AJUSTAR_HORA:
+      int mayor = 10;
+      if(digitoSeleccionado == 0 && horaS.charAt(1) - '0' < 4){
+        mayor = 3;
+      } else if(digitoSeleccionado == 0) {
+        mayor = 2;
+      }
+      if(digitoSeleccionado == 1 && horaS.charAt(0) - '0' == 2){
+        mayor = 4;
+      }
+      if(digitoSeleccionado == 2){
+        mayor = 6;
+      }
+      if (digito < mayor - 1) { 
+        digito++;
+      if(digitoSeleccionado > 1){
+        horaS.setCharAt(digitoSeleccionado + 1, '0' + digito);
+      } else {
+        horaS.setCharAt(digitoSeleccionado, '0' + digito);
+      }  	 
+    }
+      mostrarSeleccionarDigito(horaS);
+    break;
+    }
+  }
+}
+
+// BOTON ABAJO
+void botonAbajo(){
+  // BOTON DOWN
+  if (digitalRead(botonDown) == LOW) {
+    delay(200);
+	  switch(estadoActual){
+      case MENU_PRINCIPAL:
+	   	  if (opcionSeleccionada < totalOpciones - 1) { 
+       	opcionSeleccionada++;
+    	  }
+    	  mostrarMenuPrincipal();
+	    break;
+	    case MENU_CRONOGRAMA:
+		    if (opcionSeleccionada < totalOpciones - 1) { 
+       	  opcionSeleccionada++;
+    	  }
+    	  mostrarMenuCronograma();
+	    break;
+      case SELECCIONAR_DIGITO:
+      	if (digitoSeleccionado < 4 - 1) { 
+       		digitoSeleccionado++;
+    	  }
+		    if(horario == 0){
+          String readHoraDia = leerEEPROM(EEPROM_HORA_DIA_ADDR);
+      		mostrarSeleccionarDigito(readHoraDia);
+      		//mostrarSeleccionarDigito(horaDia);
+        } else {
+          String readHoraNoche = leerEEPROM(EEPROM_HORA_NOCHE_ADDR);
+        	mostrarSeleccionarDigito(readHoraNoche);
+        	//mostrarSeleccionarDigito(horaNoche);
+        }
+      break;
+      case AJUSTAR_HORA:
+      if (digito > 0) { 
+          digito--;
+          if(digitoSeleccionado > 1){
+            horaS.setCharAt(digitoSeleccionado + 1, '0' + digito);
+          } else {
+            horaS.setCharAt(digitoSeleccionado, '0' + digito);
+          }     
+        }
+        mostrarSeleccionarDigito(horaS);
+      break;
+    }
+  }
+}
+
+// BOTON CONFIRMAR
+void botonConfirmar(){
+  // BOTON CONFIRM
+  if (digitalRead(botonConfirm) == LOW) {
+    delay(200);
+    switch(estadoActual){
+      case MENU_PRINCIPAL:
+	   	  if(opcionSeleccionada == 0){
+			    //opcionSeleccionada = 0;
+      		mostrarMenuCronograma();
+			    estadoActual = MENU_CRONOGRAMA;
+    	  } else{
+			    opcionSeleccionada = 0;
+      		mostrarMenuComida();
+			    estadoActual = MENU_COMIDA;
+    	  }
+	  break;
+	  case MENU_CRONOGRAMA:
+		  if(opcionSeleccionada == 0){
+			  //opcionSeleccionada = 0;
+			  horario = 0;
+        String readHoraDia = leerEEPROM(EEPROM_HORA_DIA_ADDR);
+      	//mostrarSeleccionarDigito(horaDia);
+      	mostrarSeleccionarDigito(readHoraDia);
+			  estadoActual = SELECCIONAR_DIGITO;
+    	} else{
+			  opcionSeleccionada = 0;
+			  horario = 1;
+        String readHoraNoche = leerEEPROM(EEPROM_HORA_NOCHE_ADDR);
+      	//mostrarSeleccionarDigito(horaNoche);
+      	mostrarSeleccionarDigito(readHoraNoche);
+			  estadoActual = SELECCIONAR_DIGITO;
+    	}
+	  break;
+	  case SELECCIONAR_DIGITO:
+		  if(horario == 0){
+        String readHoraDia = leerEEPROM(EEPROM_HORA_DIA_ADDR);
+			  horaS = readHoraDia;
+			  //horaS = horaDia;
+      } else {
+        String readHoraNoche = leerEEPROM(EEPROM_HORA_NOCHE_ADDR);
+			  //horaS = horaNoche; 	
+			  horaS = readHoraNoche; 	
+      }
+		  if(digitoSeleccionado > 1){
+          digito = horaS.charAt(digitoSeleccionado + 1) - '0';
+      } else {
+          digito = horaS.charAt(digitoSeleccionado) - '0';
+      }
+      lcd.clear();
+      lcd.setCursor(2,0);
+      lcd.print("Seleccionado!");
+      delay(400);
+      mostrarSeleccionarDigito(horaS);
+      estadoActual = AJUSTAR_HORA;
+	  break;
+	  case AJUSTAR_HORA:
+		  if(horario == 0){
+        horaDia = horaS;
+        escribirEEPROM(EEPROM_HORA_DIA_ADDR, horaDia);
+			  mostrarSeleccionarDigito(horaDia);
+      } else {
+        horaNoche = horaS;
+        escribirEEPROM(EEPROM_HORA_NOCHE_ADDR, horaNoche);
+			  mostrarSeleccionarDigito(horaNoche);
+      }
+		  opcionSeleccionada = 0;
+      estadoActual = SELECCIONAR_DIGITO;
+	  break;
+    }
+   
+  }
+}
+
+// BOTON ATRAS
+void botonAtras(){
+  // BOTON BACK
+  if (digitalRead(botonBack) == LOW) {
+    delay(200);
+	  opcionSeleccionada = 0;
+	  digitoSeleccionado = 0;
+    Serial.println("Boton apretado");
+
+    switch(estadoActual){
+      case SELECCIONAR_DIGITO:
+        mostrarMenuCronograma();
+        estadoActual = MENU_CRONOGRAMA;
+      break;
+      case AJUSTAR_HORA:
+        mostrarMenuCronograma();
+        estadoActual = MENU_CRONOGRAMA;
+      break;
+      default:
+        mostrarMenuPrincipal();
+        estadoActual = MENU_PRINCIPAL;
+      break;
+      }
+  }
+}
+
+// Función para escribir una cadena en la EEPROM
+void escribirEEPROM(int address, String data) {
+  // AJUSTA LA LONGITUD
+  int longitud = data.length();
+  if (longitud > MAX_STRING_LENGTH - 1) {
+    longitud = MAX_STRING_LENGTH - 1;
+  }
+
+  // GUARDA LA LONGITUD
+  EEPROM.write(address, longitud);
+
+  // GUARDA 1X1
+  for (int i = 0; i < longitud; i++) {
+    EEPROM.write(address + 1 + i, data[i]);
+  }
+  // TERMINA LA CADENA CON \0
+  EEPROM.write(address + 1 + longitud, '\0');
+  EEPROM.commit();
+}
+
+String leerEEPROM(int address) {
+  // AJUSTA LA LONGITUD
+  int longitud = EEPROM.read(address);
+  if (longitud > MAX_STRING_LENGTH - 1) {
+    longitud = MAX_STRING_LENGTH - 1;
+  }
+  // VARIABLE PARA GUARDAR
+  char data[longitud + 1];
+  for (int i = 0; i < longitud; i++) {
+    // LEE 1X1
+    data[i] = EEPROM.read(address + 1 + i);
+  }
+  // TERMINA LA CADENA CON \0
+  data[longitud] = '\0'; 
+  return String(data);
 }
