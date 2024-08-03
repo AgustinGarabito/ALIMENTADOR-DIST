@@ -676,16 +676,7 @@ void dispensar(){
                         (diaSemana == 5) ? "Viernes" :
                         (diaSemana == 6) ? "Sabado" :
                         "Domingo";
-
-  // ACTUALIZA LA PANTALLA
-  lcd.clear();
-  lcd.setCursor(1, 0);
-  lcd.print("Ultima comida");
-  lcd.setCursor(0, 1);
-  lcd.print(diaSemanaStr);
-  lcd.setCursor(8, 1);
-  lcd.print(timeClient.getFormattedTime());
-
+                        
   // GUARDA DIA/HORA Y LA ENVIA A LA APP
   fechaHora = diaSemanaStr + " " + timeClient.getFormattedTime();
 
@@ -700,7 +691,7 @@ void dispensar(){
 
 // DISPENSADOR AUTOMATICO (10 AM Y 20 PM)
 void dispensadorAutomatico(){
-  if ((timeClient.getFormattedTime() == leerEEPROM(EEPROM_HORA_DIA_ADDR) || timeClient.getFormattedTime() == leerEEPROM(EEPROM_HORA_NOCHE_ADDR)) && vecesAlimentadoHoy < 2){
+  if (((timeClient.getFormattedTime() == leerEEPROM(EEPROM_HORA_DIA_ADDR) && vecesAlimentadoHoy < 1) || ((timeClient.getFormattedTime() == leerEEPROM(EEPROM_HORA_NOCHE_ADDR)) && vecesAlimentadoHoy < 2))){
     dispensar();
   }
 }
@@ -973,6 +964,10 @@ void botonConfirmar(){
       estadoActual = AJUSTAR_HORA;
 	  break;
 	  case AJUSTAR_HORA:
+      lcd.clear();
+      lcd.setCursor(2,0);
+      lcd.print("Modificado!");
+      delay(400);
 		  if(horario == 0){
         horaDia = horaS;
         escribirEEPROM(EEPROM_HORA_DIA_ADDR, horaDia);
