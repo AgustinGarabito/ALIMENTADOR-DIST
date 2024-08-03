@@ -45,6 +45,11 @@ El circuito cuenta con los siguiente elementos:
       <td colspan="1" style="width: 100%; padding-top: 50px;">Motor de vibración</td>
     </tr>
     <tr>
+      <td colspan="1" style="width: 100%; padding-top: 50px;">Mecanismo menú</td>
+      <td colspan="1" style="width: 100%; padding-top: 50px;">4</td>
+      <td colspan="1" style="width: 100%; padding-top: 50px;">Pulsadores</td>
+    </tr>
+    <tr>
       <td colspan="1" style="width: 100%; padding-top: 50px;">Fuente de alimentación</td>
       <td colspan="1" style="width: 100%; padding-top: 50px;">1</td>
       <td colspan="1" style="width: 100%; padding-top: 50px;">Fuente de 3,3v – 5v para protoboard</td>
@@ -59,7 +64,7 @@ El circuito cuenta con los siguiente elementos:
 <br>
  <div align="center">
    
-   <img>  ![image](https://github.com/user-attachments/assets/82f380b7-8971-44f1-b74f-63b5e123ffc9)</img>
+   <img>  ![Diagrama](https://github.com/user-attachments/assets/0cc739fb-5761-4ceb-b7d6-cf6b73c5aa52)</img>
 
 </div>
 
@@ -71,18 +76,18 @@ El circuito cuenta con los siguiente elementos:
 -	<b> Conexión con servidor NTP para obtener el día y la hora al momento
 -	<b> Dispensar porción de alimento a distancia mediante uso de un celular (Conexión y Servomotor)
 -	<b>	Dispensado de alimento a distancia a las 10:00 AM y 20:00 PM de no haberse dispensado manualmente (Conexión a un servidor NTP y Servomotor)
--	<b>	Envío de notificación push-up al celular al momento de dispensar
+-	<b>	Envío de notificación push-up al celular al momento de dispensar (Conexión con Blynk).
 -	<b> Emisión de un sonido a elección entre los 3 predefinidos al momento de dispensar la comida (Buzzer y conexión)
--	<b> Mostrar por pantalla y en la aplicación la última vez que dispensó alimento (Conexión y Display LCD)
+-	<b> Mostrar por pantalla un menú y mediante la navegación implementado con 4 pulsadores para poder visualizar última vez que dispensó alimento o configurar el cronograma de dispensado automático. (Conexión, Display LCD, EEPROM y 4 pulsadores)
 -	<b> Vibración al momento de dispensar para acomodar los granos dentro de la tolva (Motor de vibración y conexión)
 
 <br>
 
 ## VALIDACIONES
 - <b> El sistema valida cuantas veces dispenso en el día al momento de dispensar y dispensar automáticamente para no sobrepasarse de las 2 comidas diarias.
-- <b> El sistema sincroniza las variables guardadas en la aplicación con las del ESP8266 para que no haya variaciones.
+- <b> El sistema sincroniza las variables guardadas en la aplicación con las del ESP8266 para que no haya variaciones. 
 
-NOTA: Se descarto el uso de la memoria EEPROM ya que en el ESP8266 la misma tiene ciclos de escritura/lectura limitados
+NOTA: (Se descarto el uso de la memoria EEPROM ya que en el ESP8266 la misma tiene ciclos de escritura/lectura limitados, solo es utilizada para el cronograma)
 
 <br>
 
@@ -125,7 +130,7 @@ NOTA: Se descarto el uso de la memoria EEPROM ya que en el ESP8266 la misma tien
 <div style="display: flex; justify-content: space-between;">
 
   <img src="https://github.com/user-attachments/assets/3af86305-1dda-4f41-8611-5631f959172a" width="45%" style="margin: 0 10px;">
-  <img src="https://github.com/user-attachments/assets/dc40631e-4fa4-44fa-b272-c84d2ad227f3" width="45%" style="margin: 0 10px;">
+  <img src="https://github.com/user-attachments/assets/ca5fe463-4fb1-4313-a798-8f27ea7da46a" width="45%" style="margin: 0 10px;">
 
 </div>
 
